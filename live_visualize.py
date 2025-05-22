@@ -63,7 +63,6 @@ def create_visualization():
     # Add training metrics
     if metrics:
         metrics_text = f"Best Reward: {metrics['best_reward']:.2f}\n"
-        metrics_text += f"Exploration Rate: {metrics['exploration_rate']:.3f}\n"
         metrics_text += f"Episodes: {len(metrics['episode_rewards'])}"
         
         plt.figtext(0.5, 0.01, metrics_text, ha='center', fontsize=10, 

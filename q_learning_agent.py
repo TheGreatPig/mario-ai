@@ -4,13 +4,13 @@ import json
 import os
 
 class QLearningAgent:
-    def __init__(self, state_size, action_size, learning_rate=0.1, discount_factor=0.95, exploration_rate=1.0):
+    def __init__(self, state_size, action_size, learning_rate=0.3, discount_factor=0.95, exploration_rate=1.0):
         self.state_size = state_size
         self.action_size = action_size
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
-        self.exploration_rate = exploration_rate
-        self.exploration_decay = 0.995
+        # self.exploration_rate = exploration_rate
+        # self.exploration_decay = 0.995
         self.min_exploration_rate = 0.01
         self.max_exploration_rate = 0.8  # Cap on exploration rate
         
@@ -42,32 +42,16 @@ class QLearningAgent:
         # Convert 2D grid position to 1D index (80x10 grid = 800 states)
         return int(x_idx * 10 + y_idx)
     
-    def get_position_based_exploration(self, x_pos):
-        """Calculate exploration rate boost based on Mario's x position"""
-        # Convert x position to section (0-79)
-        x_section = min(int(x_pos) // 25, 79)
-        
-        # Calculate exploration boost (0 to 0.4)
-        # More boost as Mario gets further in the level
-        exploration_boost = (x_section / 79) * 0.4
-        
-        return exploration_boost
-    
-    def choose_action(self, state):
+    def choose_action(self, state, x_max):
         state_idx = self.get_state_index(state)
-        x,y = state  # Get x position from state
-        
-        # Calculate position-based exploration boost
-        exploration_boost = self.get_position_based_exploration(x)
-        
+        x = state[0]  # Get x position from state
+
         # Combine base exploration rate with position-based boost
-        effective_exploration_rate = min(
-            self.exploration_rate + exploration_boost,
-            self.max_exploration_rate
-        )
-        
+        exploration_rate = max(min(0.005 * x - 0.005*(x_max-35), 0.3), 0.001)
+        # print(exploration_rate, x,x_max)
+
         # Exploration: choose a random action
-        if random.random() < effective_exploration_rate:
+        if random.random() < exploration_rate:
             return random.randrange(self.action_size)
         
         # Exploitation: choose the best action from Q-table
@@ -90,9 +74,9 @@ class QLearningAgent:
         self.q_table[state_idx, action] = new_value
         
         # Decay exploration rate
-        if done:
-            self.exploration_rate = max(self.min_exploration_rate, 
-                                      self.exploration_rate * self.exploration_decay)
+        # if done:
+        #     self.exploration_rate = max(self.min_exploration_rate, 
+        #                               self.exploration_rate * self.exploration_decay)
     
     def save(self, filename='mario_agent'):
         """Save the agent's Q-table and training metrics"""
@@ -104,7 +88,6 @@ class QLearningAgent:
         
         # Save training metrics
         metrics = {
-            'exploration_rate': self.exploration_rate,
             'best_reward': self.best_reward,
             'episode_rewards': self.episode_rewards
         }
@@ -120,7 +103,6 @@ class QLearningAgent:
             # Load training metrics
             with open(f'saved_agents/{filename}_metrics.json', 'r') as f:
                 metrics = json.load(f)
-                self.exploration_rate = metrics['exploration_rate']
                 self.best_reward = metrics['best_reward']
                 self.episode_rewards = metrics['episode_rewards']
             

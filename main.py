@@ -7,7 +7,7 @@ import numpy as np
 from q_learning_agent import QLearningAgent
 
 # Initialize environment
-env = gym.make('SuperMarioBros-v0')
+env = gym.make('SuperMarioBros-1-1-v0')
 env = JoypadSpace(env, gym_super_mario_bros.actions.RIGHT_ONLY)
 
 # Initialize Q-Learning agent
@@ -16,7 +16,7 @@ env = JoypadSpace(env, gym_super_mario_bros.actions.RIGHT_ONLY)
 agent = QLearningAgent(state_size=800, action_size=env.action_space.n)
 
 # Try to load previous training progress
-if agent.load():
+if agent.load("mario_agent_best"):
     print("Loaded previous training progress")
 else:
     print("Starting new training")
@@ -24,16 +24,17 @@ else:
 # Training parameters
 episodes = 1000
 max_steps = 5000
-stuck_threshold = 50  # Number of steps without positive reward to consider Mario stuck
+stuck_threshold = 150  # Number of steps without positive reward to consider Mario stuck
 no_progress_reward = 0  # Reward threshold to consider as no progress
 
 # Set to True to see the training, False for faster training
-render_training = False
+render_training = True
 # Set to True to use human-readable mode (slower) or False for fast mode
-human_mode = False
+human_mode = True
 
 # Save progress every N episodes
 save_interval = 1
+last_x = []
 
 for episode in range(episodes):
     state = env.reset()
@@ -51,7 +52,8 @@ for episode in range(episodes):
     current_life = 2  # Track Mario's current life count
     for step in range(max_steps):
         # Choose action using Q-Learning agent
-        action = agent.choose_action(current_state)
+        
+        action = agent.choose_action(current_state, np.array(last_x[-3:]).mean())
         
         # Take action
         next_state, reward, done, info = env.step(action)
@@ -80,6 +82,7 @@ for episode in range(episodes):
         if steps_without_progress >= stuck_threshold:
             print(f"Episode terminated: No progress for {stuck_threshold} steps")
             done = True
+            reward = -15 
         
         # Learn from this experience
         agent.learn(current_state, action, reward, next_state_coords, done)
@@ -90,9 +93,10 @@ for episode in range(episodes):
         # Render the environment if enabled
         if render_training:
             env.render(mode='human' if human_mode else 'rgb_array')
-        
         if done:
             break
+    
+    last_x.append(current_state[0])
     
     # Update and save metrics
     agent.update_metrics(total_reward)
@@ -103,7 +107,7 @@ for episode in range(episodes):
         print(f"Progress saved at episode {episode + 1}")
     
     print(f"Episode {episode + 1}/{episodes}, Total Reward: {total_reward}, "
-          f"Final Position: {next_mario_x}, Exploration Rate: {agent.exploration_rate:.2f}, "
+          f"Final Position: {next_mario_x}, Exploration Rate: {0:.2f}, "
           f"Best Reward: {agent.best_reward}")
 
 # Save final state
