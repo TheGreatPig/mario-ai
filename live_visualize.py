@@ -19,7 +19,7 @@ def create_visualization():
     # Try to load the best agent first, fall back to regular agent if not found
     qtable, metrics = load_qtable('mario_agent')
     if qtable is None:
-        qtable, metrics = load_qtable('mario_agent_best')
+        qtable, metrics = load_qtable('mario_agent')
     if qtable is None:
         print("No Q-table found")
         return
@@ -51,9 +51,11 @@ def create_visualization():
         rewards = metrics['episode_rewards']
         window = min(100, len(rewards))
         recent_rewards = rewards[-window:]
+        # average_rewards.append(np.array(recent_rewards[-50:]).mean())
         episodes = range(len(rewards) - window + 1, len(rewards) + 1)
         
         axes[2].plot(episodes, recent_rewards, 'b-', label='Episode Reward')
+        # axes[2].plot(episodes, average_rewards, 'r-', label='Average Reward')
         axes[2].set_title('Recent Reward History')
         axes[2].set_xlabel('Episode')
         axes[2].set_ylabel('Reward')
@@ -69,13 +71,13 @@ def create_visualization():
                     bbox=dict(facecolor='white', alpha=0.8))
     
     plt.tight_layout()
-    plt.savefig('saved_agents/live_visualization.png')
+    plt.savefig('visualizations/metrics.png')
     plt.close()
-    print(f"Updated visualization at {time.strftime('%H:%M:%S')}")
+    print(f"Updated metric visualization at {time.strftime('%H:%M:%S')}")
 
 def main():
     # Create saved_agents directory if it doesn't exist
-    os.makedirs('saved_agents', exist_ok=True)
+    os.makedirs('visualizations', exist_ok=True)
     
     try:
         while True:

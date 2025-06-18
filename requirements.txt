@@ -2,3 +2,4 @@ numpy<2.0.0
 gym==0.25.1
 gym-super-mario-bros
 matplotlib
+opencv-python

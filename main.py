@@ -16,7 +16,7 @@ env = JoypadSpace(env, gym_super_mario_bros.actions.RIGHT_ONLY)
 agent = QLearningAgent(state_size=800, action_size=env.action_space.n)
 
 # Try to load previous training progress
-if agent.load("mario_agent_best"):
+if agent.load("mario_agent"):
     print("Loaded previous training progress")
 else:
     print("Starting new training")
@@ -28,9 +28,9 @@ stuck_threshold = 150  # Number of steps without positive reward to consider Mar
 no_progress_reward = 0  # Reward threshold to consider as no progress
 
 # Set to True to see the training, False for faster training
-render_training = True
+render_training = False
 # Set to True to use human-readable mode (slower) or False for fast mode
-human_mode = True
+human_mode = False
 
 # Save progress every N episodes
 save_interval = 1
@@ -93,6 +93,7 @@ for episode in range(episodes):
         # Render the environment if enabled
         if render_training:
             env.render(mode='human' if human_mode else 'rgb_array')
+            # time.sleep(0.02)
         if done:
             break
     
