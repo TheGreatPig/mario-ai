@@ -1,116 +1,101 @@
 from nes_py.wrappers import JoypadSpace
-import gym
 import gym_super_mario_bros
-from gym_super_mario_bros.actions import *
-import time
+from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 import numpy as np
+import time
 from q_learning_agent import QLearningAgent
 
-# Initialize environment
-env = gym.make('SuperMarioBros-1-1-v0')
-env = JoypadSpace(env, gym_super_mario_bros.actions.RIGHT_ONLY)
+# KEIN render_mode angeben, sonst Fehler!
+env = gym_super_mario_bros.make('SuperMarioBros-1-1-v0')
+env = JoypadSpace(env, SIMPLE_MOVEMENT)
 
-# Initialize Q-Learning agent
-# State space: 80x10 grid (800 states)
-# Action space: number of possible actions in RIGHT_ONLY
+# Agent initialisieren
 agent = QLearningAgent(state_size=800, action_size=env.action_space.n)
 
-# Try to load previous training progress
-if agent.load("mario_agent"):
-    print("Loaded previous training progress")
+# Versuche, gespeicherten Fortschritt zu laden
+if agent.load("mario_agent_v2"):
+    print("✅ Vorheriger Lernfortschritt geladen")
 else:
-    print("Starting new training")
+    print("🚀 Neuer Lernprozess gestartet")
 
-# Training parameters
 episodes = 1000
 max_steps = 5000
-stuck_threshold = 150  # Number of steps without positive reward to consider Mario stuck
-no_progress_reward = 0  # Reward threshold to consider as no progress
+stuck_threshold = 140
+no_progress_reward = 0
+render_training = True
 
-# Set to True to see the training, False for faster training
-render_training = False
-# Set to True to use human-readable mode (slower) or False for fast mode
-human_mode = False
-
-# Save progress every N episodes
 save_interval = 1
 last_x = []
+jump_hold_frames = 7
+jump_hold_counter = 0
+last_action = 0
 
 for episode in range(episodes):
     state = env.reset()
     total_reward = 0
     done = False
-    
-    # Get initial state (x, y coordinates from info dict)
-    mario_x = 0
-    mario_y = 0
+    mario_x = mario_y = 0
     current_state = (mario_x, mario_y)
-    
-    # Variables to track progress
     steps_without_progress = 0
-    
-    current_life = 2  # Track Mario's current life count
+    current_life = 2
+
     for step in range(max_steps):
-        # Choose action using Q-Learning agent
-        
-        action = agent.choose_action(current_state, np.array(last_x[-3:]).mean())
-        
-        # Take action
-        next_state, reward, done, info = env.step(action)
-        
-        # Check if Mario died (life count decreased)
+        if jump_hold_counter > 0:
+            action_to_take = last_action
+            jump_hold_counter -= 1
+        else:
+            avg_x = np.mean(last_x[-3:]) if len(last_x) >= 3 else 0
+            action = agent.choose_action(current_state, avg_x)
+            last_action = action
+            if 'A' in SIMPLE_MOVEMENT[action]:
+                jump_hold_counter = jump_hold_frames
+            action_to_take = action
+
+        next_state, reward, done, info = env.step(action_to_take)
+
+        if info['x_pos'] > mario_x:
+            reward += 10  # Bonus für Fortschritt
+
+        mario_x, mario_y = info['x_pos'], info['y_pos']
+
         if info['life'] < current_life:
-            print(f"Mario died! Starting new episode.")
+            print("☠️ Mario gestorben.")
             done = True
-            reward = -15  # Penalize death with negative reward
+            reward = -300
         current_life = info['life']
-        
         total_reward += reward
-        
-        # Get next state coordinates from info dict
-        next_mario_x = info['x_pos']
-        next_mario_y = info['y_pos']
-        next_state_coords = (next_mario_x, next_mario_y)
-        
-        # Check if Mario is making progress based on reward
+
+        next_state_coords = (info['x_pos'], info['y_pos'])
+
         if reward <= no_progress_reward:
             steps_without_progress += 1
         else:
             steps_without_progress = 0
-        
-        # Terminate if Mario is stuck (no positive rewards for too long)
+
         if steps_without_progress >= stuck_threshold:
-            print(f"Episode terminated: No progress for {stuck_threshold} steps")
+            print("⚠️ Kein Fortschritt – Episode wird abgebrochen.")
             done = True
-            reward = -15 
-        
-        # Learn from this experience
-        agent.learn(current_state, action, reward, next_state_coords, done)
-        
-        # Update current state
+            reward = -15
+
+        agent.learn(current_state, action_to_take, reward, next_state_coords, done)
         current_state = next_state_coords
-        
-        # Render the environment if enabled
+
         if render_training:
-            env.render(mode='human' if human_mode else 'rgb_array')
-            # time.sleep(0.02)
+            env.render()
+
         if done:
             break
-    
-    last_x.append(current_state[0])
-    
-    # Update and save metrics
-    agent.update_metrics(total_reward)
-    
-    # Save progress periodically
-    if (episode + 1) % save_interval == 0:
-        agent.save()
-        print(f"Progress saved at episode {episode + 1}")
-    
-    print(f"Episode {episode + 1}/{episodes}, Total Reward: {total_reward}, "
-          f"Final Position: {next_mario_x}, Exploration Rate: {0:.2f}, "
-          f"Best Reward: {agent.best_reward}")
 
-# Save final state
-agent.save()
+    last_x.append(current_state[0])
+    agent.update_metrics(total_reward)
+
+    if (episode + 1) % save_interval == 0:
+        agent.save("mario_agent_v2")
+        print(f"💾 Fortschritt gespeichert bei Episode {episode + 1}")
+
+    print(f"📊 Episode {episode + 1}/{episodes}, Reward: {total_reward:.2f}, "
+          f"X: {current_state[0]}, Best: {agent.best_reward:.2f}")
+
+# Am Ende zusätzlich nochmal speichern
+agent.save("mario_agent_v2")
 env.close()
