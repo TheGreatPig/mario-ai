@@ -5,7 +5,6 @@ import os
 import time
 
 def load_qtable(filename='mario_agent'):
-    """Load Q-table and metrics from saved files"""
     try:
         qtable = np.load(f'saved_agents/{filename}_qtable.npy')
         with open(f'saved_agents/{filename}_metrics.json', 'r') as f:
@@ -15,8 +14,6 @@ def load_qtable(filename='mario_agent'):
         return None, None
 
 def create_visualization():
-    """Create and save the visualization"""
-    # Try to load the best agent first, fall back to regular agent if not found
     qtable, metrics = load_qtable('mario_agent')
     if qtable is None:
         qtable, metrics = load_qtable('mario_agent')
@@ -24,13 +21,10 @@ def create_visualization():
         print("No Q-table found")
         return
     
-    # Create figure and subplots
     fig, axes = plt.subplots(1, 3, figsize=(20, 6))
-    
-    # Reshape Q-table to 2D grid (80x10)
-    qtable_2d = qtable.reshape(80, 10, -1)
-    
-    # Plot 1: Heatmap of best actions
+    qtable_2d = qtable.reshape(120, 10, -1)
+
+    # Plot 1: Heatmap der besten Aktionen
     best_actions = np.argmax(qtable_2d, axis=2)
     im1 = axes[0].imshow(best_actions.T, cmap='viridis', aspect='auto')
     axes[0].set_title('Best Actions for Each State')
@@ -38,7 +32,7 @@ def create_visualization():
     axes[0].set_ylabel('Y Position (0-9)')
     plt.colorbar(im1, ax=axes[0], label='Action Index')
     
-    # Plot 2: Heatmap of maximum Q-values
+    # Plot 2: Heatmap der maximalen Q-Werten
     max_q_values = np.max(qtable_2d, axis=2)
     im2 = axes[1].imshow(max_q_values.T, cmap='hot', aspect='auto')
     axes[1].set_title('Maximum Q-Values')
@@ -46,23 +40,20 @@ def create_visualization():
     axes[1].set_ylabel('Y Position (0-9)')
     plt.colorbar(im2, ax=axes[1], label='Q-Value')
     
-    # Plot 3: Reward history
+    # Plot 3: Belohnungs-Graph
     if metrics and 'episode_rewards' in metrics:
         rewards = metrics['episode_rewards']
         window = min(100, len(rewards))
         recent_rewards = rewards[-window:]
-        # average_rewards.append(np.array(recent_rewards[-50:]).mean())
         episodes = range(len(rewards) - window + 1, len(rewards) + 1)
         
         axes[2].plot(episodes, recent_rewards, 'b-', label='Episode Reward')
-        # axes[2].plot(episodes, average_rewards, 'r-', label='Average Reward')
         axes[2].set_title('Recent Reward History')
         axes[2].set_xlabel('Episode')
         axes[2].set_ylabel('Reward')
         axes[2].legend()
         axes[2].grid(True)
     
-    # Add training metrics
     if metrics:
         metrics_text = f"Best Reward: {metrics['best_reward']:.2f}\n"
         metrics_text += f"Episodes: {len(metrics['episode_rewards'])}"
@@ -76,7 +67,6 @@ def create_visualization():
     print(f"Updated metric visualization at {time.strftime('%H:%M:%S')}")
 
 def main():
-    # Create saved_agents directory if it doesn't exist
     os.makedirs('visualizations', exist_ok=True)
     
     try:
